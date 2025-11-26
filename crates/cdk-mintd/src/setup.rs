@@ -1,6 +1,6 @@
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portal-wallet"))]
 use std::collections::HashMap;
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portal-wallet"))]
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -10,7 +10,7 @@ use anyhow::anyhow;
 #[cfg(any(feature = "lnbits", feature = "lnd"))]
 use anyhow::bail;
 use async_trait::async_trait;
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portal-wallet"))]
 use bip39::rand::{thread_rng, Rng};
 use cdk::cdk_database::MintKVStore;
 use cdk::cdk_payment::MintPayment;
@@ -20,7 +20,8 @@ use cdk::nuts::CurrencyUnit;
     feature = "cln",
     feature = "lnd",
     feature = "ldk-node",
-    feature = "fakewallet"
+    feature = "fakewallet",
+    feature = "portal-wallet"
 ))]
 use cdk::types::FeeReserve;
 
@@ -360,5 +361,32 @@ impl LnBackendSetup for config::LdkNode {
         ldk_node.set_web_addr(webserver_addr);
 
         Ok(ldk_node)
+    }
+}
+
+
+#[cfg(feature = "portal-wallet")]
+#[async_trait]
+impl LnBackendSetup for config::PortalWallet {
+    async fn setup(
+        &self,
+        _settings: &Settings,
+        unit: CurrencyUnit,
+        _runtime: Option<std::sync::Arc<tokio::runtime::Runtime>>,
+        _work_dir: &Path,
+        _kv_store: Option<Arc<dyn MintKVStore<Err = cdk::cdk_database::Error> + Send + Sync>>,
+    ) -> anyhow::Result<cdk_portal_wallet::FakeWallet> {
+        // calculate random delay time
+        let mut rng = thread_rng();
+        let delay_time = rng.gen_range(self.min_delay_time..=self.max_delay_time);
+
+        let fake_wallet = cdk_portal_wallet::FakeWallet::new(
+            HashMap::default(),
+            HashSet::default(),
+            delay_time,
+            unit,
+        );
+
+        Ok(fake_wallet)
     }
 }

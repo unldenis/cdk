@@ -138,6 +138,8 @@ pub enum LnBackend {
     LdkNode,
     #[cfg(feature = "grpc-processor")]
     GrpcProcessor,
+    #[cfg(feature = "portal-wallet")]
+    PortalWallet,
 }
 
 impl std::str::FromStr for LnBackend {
@@ -157,6 +159,8 @@ impl std::str::FromStr for LnBackend {
             "ldk-node" | "ldknode" => Ok(LnBackend::LdkNode),
             #[cfg(feature = "grpc-processor")]
             "grpcprocessor" => Ok(LnBackend::GrpcProcessor),
+            #[cfg(feature = "portal-wallet")]
+            "portalwallet" => Ok(LnBackend::PortalWallet),
             _ => Err(format!("Unknown Lightning backend: {s}")),
         }
     }
@@ -381,12 +385,12 @@ fn default_reserve_fee_min() -> Amount {
     2.into()
 }
 
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portal-wallet"))]
 fn default_min_delay_time() -> u64 {
     1
 }
 
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portal-wallet"))]
 fn default_max_delay_time() -> u64 {
     3
 }
@@ -572,6 +576,8 @@ pub struct Settings {
     pub auth: Option<Auth>,
     #[cfg(feature = "prometheus")]
     pub prometheus: Option<Prometheus>,
+    #[cfg(feature = "portal-wallet")]
+    pub portal_wallet: Option<PortalWallet>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -580,6 +586,27 @@ pub struct Prometheus {
     pub enabled: bool,
     pub address: Option<String>,
     pub port: Option<u16>,
+}
+
+#[cfg(feature = "portal-wallet")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortalWallet {
+    pub supported_units: Vec<CurrencyUnit>,
+    #[serde(default = "default_min_delay_time")]
+    pub min_delay_time: u64,
+    #[serde(default = "default_max_delay_time")]
+    pub max_delay_time: u64,
+}
+
+#[cfg(feature = "portal-wallet")]
+impl Default for PortalWallet {
+    fn default() -> Self {
+        Self {
+            supported_units: vec![CurrencyUnit::Sat],
+            min_delay_time: 1,
+            max_delay_time: 3,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

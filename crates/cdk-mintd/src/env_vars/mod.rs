@@ -27,6 +27,8 @@ mod lnd;
 mod management_rpc;
 #[cfg(feature = "prometheus")]
 mod prometheus;
+#[cfg(feature = "portal-wallet")]
+mod portal_wallet;
 
 use std::env;
 use std::str::FromStr;
@@ -54,7 +56,8 @@ pub use management_rpc::*;
 pub use mint_info::*;
 #[cfg(feature = "prometheus")]
 pub use prometheus::*;
-
+#[cfg(feature = "portal-wallet")]
+pub use portal_wallet::*;
 use crate::config::{DatabaseEngine, LnBackend, Settings};
 
 impl Settings {
@@ -147,6 +150,10 @@ impl Settings {
             LnBackend::GrpcProcessor => {
                 self.grpc_processor =
                     Some(self.grpc_processor.clone().unwrap_or_default().from_env());
+            }
+            #[cfg(feature = "portal-wallet")]
+            LnBackend::PortalWallet => {
+                self.portal_wallet = Some(self.portal_wallet.clone().unwrap_or_default().from_env());
             }
             LnBackend::None => bail!("Ln backend must be set"),
             #[allow(unreachable_patterns)]

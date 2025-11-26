@@ -21,7 +21,8 @@ use cdk::mint::{Mint, MintBuilder, MintMeltLimits};
     feature = "lnd",
     feature = "ldk-node",
     feature = "fakewallet",
-    feature = "grpc-processor"
+    feature = "grpc-processor",
+    feature = "portal-wallet"
 ))]
 use cdk::nuts::nut17::SupportedMethods;
 use cdk::nuts::nut19::{CachedEndpoint, Method as NUT19Method, Path as NUT19Path};
@@ -30,7 +31,8 @@ use cdk::nuts::nut19::{CachedEndpoint, Method as NUT19Method, Path as NUT19Path}
     feature = "lnbits",
     feature = "lnd",
     feature = "ldk-node",
-    feature = "fakewallet"
+    feature = "fakewallet",
+    feature = "portal-wallet"
 ))]
 use cdk::nuts::CurrencyUnit;
 #[cfg(feature = "auth")]
@@ -548,6 +550,28 @@ async fn configure_lightning_backend(
             )
             .await?;
         }
+        #[cfg(feature = "portal-wallet")]
+        LnBackend::PortalWallet => {
+            let portal_wallet = settings.clone().portal_wallet.expect("Portal wallet defined");
+            tracing::info!("Using portal wallet: {:?}", portal_wallet);
+
+            for unit in portal_wallet.clone().supported_units {
+                let portal = portal_wallet
+                    .setup(settings, unit.clone(), None, work_dir, _kv_store.clone())
+                    .await?;
+                #[cfg(feature = "prometheus")]
+                let portal = MetricsMintPayment::new(portal);
+
+                mint_builder = configure_backend_for_unit(
+                    settings,
+                    mint_builder,
+                    unit.clone(),
+                    mint_melt_limits,
+                    Arc::new(portal),
+                )
+                .await?;
+            }
+        }
         LnBackend::None => {
             tracing::error!(
                 "Payment backend was not set or feature disabled. {:?}",
@@ -605,7 +629,8 @@ async fn configure_backend_for_unit(
         feature = "lnd",
         feature = "fakewallet",
         feature = "grpc-processor",
-        feature = "ldk-node"
+        feature = "ldk-node",
+        feature = "portal-wallet"
     ))]
     {
         let nut17_supported = SupportedMethods::default_bolt11(unit);
