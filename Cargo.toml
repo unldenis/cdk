@@ -118,7 +118,7 @@ nostr-sdk = { version = "0.43.0", default-features = false, features = [
     "nip59"
 ]}
 
-
+cdk-portal-wallet = { path = "./crates/cdk-portal-wallet", version = "=0.14.0" }
 
 
 [workspace.metadata]
