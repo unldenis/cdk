@@ -1,0 +1,1 @@
+cargo run -p cdk-mintd -- --config /home/user/portal/cdk/crates/cdk-mintd/config.toml

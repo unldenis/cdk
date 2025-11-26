@@ -5,10 +5,25 @@ use cdk::mint_url::MintUrl;
 use cdk::nuts::CurrencyUnit;
 use cdk::wallet::MultiMintWallet;
 use cdk::Amount;
+use clap::Args;
 
-pub async fn balance(multi_mint_wallet: &MultiMintWallet) -> Result<()> {
+use std::str::FromStr;
+
+#[derive(Args)]
+pub struct BalanceSubCommand {
+    /// Currency unit e.g. sat, msat, usd, eur
+    #[arg(short, long)]
+    pub unit: String,
+}
+
+
+pub async fn balance(multi_mint_wallet: &MultiMintWallet,sub_command_args: &BalanceSubCommand,) -> Result<()> {
+
+    println!("Balance for unit: {}", sub_command_args.unit);
+
+    let unit = CurrencyUnit::from_str(&sub_command_args.unit)?;
     // Show individual mint balances
-    let mint_balances = mint_balances(multi_mint_wallet, multi_mint_wallet.unit()).await?;
+    let mint_balances = mint_balances(multi_mint_wallet, &unit).await?;
 
     // Show total balance using the new unified interface
     let total = multi_mint_wallet.total_balance().await?;
@@ -17,7 +32,7 @@ pub async fn balance(multi_mint_wallet: &MultiMintWallet) -> Result<()> {
         println!(
             "Total balance across all wallets: {} {}",
             total,
-            multi_mint_wallet.unit()
+            unit
         );
     }
 
