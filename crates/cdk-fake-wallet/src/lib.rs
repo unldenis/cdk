@@ -730,22 +730,22 @@ impl MintPayment for FakeWallet {
             // Wait for the random delay to elapse
             time::sleep(duration).await;
 
-            let response = WaitPaymentResponse {
-                payment_identifier: payment_hash_clone.clone(),
-                payment_amount: final_amount,
-                unit: unit_clone,
-                payment_id: payment_hash_clone.to_string(),
-            };
-            let mut incoming = incoming_payment.write().await;
-            incoming
-                .entry(payment_hash_clone.clone())
-                .or_insert_with(Vec::new)
-                .push(response.clone());
+                let response = WaitPaymentResponse {
+                    payment_identifier: payment_hash_clone.clone(),
+                    payment_amount: final_amount,
+                    unit: unit_clone,
+                    payment_id: payment_hash_clone.to_string(),
+                };
+                let mut incoming = incoming_payment.write().await;
+                incoming
+                    .entry(payment_hash_clone.clone())
+                    .or_insert_with(Vec::new)
+                    .push(response.clone());
 
-            // Send the message after waiting for the specified duration
-            if sender.send(response.clone()).await.is_err() {
-                tracing::error!("Failed to send label: {:?}", payment_hash_clone);
-            }
+                // Send the message after waiting for the specified duration
+                if sender.send(response.clone()).await.is_err() {
+                    tracing::error!("Failed to send label: {:?}", payment_hash_clone);
+                }
         });
 
         // For any-amount invoices ONLY, also add to the secondary repayment queue

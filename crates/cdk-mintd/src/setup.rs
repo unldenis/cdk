@@ -375,18 +375,9 @@ impl LnBackendSetup for config::PortalWallet {
         _runtime: Option<std::sync::Arc<tokio::runtime::Runtime>>,
         _work_dir: &Path,
         _kv_store: Option<Arc<dyn MintKVStore<Err = cdk::cdk_database::Error> + Send + Sync>>,
-    ) -> anyhow::Result<cdk_portal_wallet::FakeWallet> {
-        // calculate random delay time
-        let mut rng = thread_rng();
-        let delay_time = rng.gen_range(self.min_delay_time..=self.max_delay_time);
+    ) -> anyhow::Result<cdk_portal_wallet::SimpleWallet> {
+        let portal_wallet = cdk_portal_wallet::SimpleWallet::new(unit);
 
-        let fake_wallet = cdk_portal_wallet::FakeWallet::new(
-            HashMap::default(),
-            HashSet::default(),
-            delay_time,
-            unit,
-        );
-
-        Ok(fake_wallet)
+        Ok(portal_wallet)
     }
 }
