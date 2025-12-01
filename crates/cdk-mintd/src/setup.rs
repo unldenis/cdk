@@ -1,6 +1,6 @@
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portalwallet"))]
 use std::collections::HashMap;
-#[cfg(feature = "fakewallet")]
+#[cfg(any(feature = "fakewallet", feature = "portalwallet"))]
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -360,5 +360,22 @@ impl LnBackendSetup for config::LdkNode {
         ldk_node.set_web_addr(webserver_addr);
 
         Ok(ldk_node)
+    }
+}
+
+#[cfg(feature = "portalwallet")]
+#[async_trait]
+impl LnBackendSetup for config::PortalWallet {
+    async fn setup(
+        &self,
+        _settings: &Settings,
+        unit: CurrencyUnit,
+        _runtime: Option<std::sync::Arc<tokio::runtime::Runtime>>,
+        _work_dir: &Path,
+        _kv_store: Option<Arc<dyn MintKVStore<Err = cdk::cdk_database::Error> + Send + Sync>>,
+    ) -> anyhow::Result<cdk_portal_wallet::SimpleWallet> {
+        let portal_wallet = cdk_portal_wallet::SimpleWallet::new(unit);
+
+        Ok(portal_wallet)
     }
 }

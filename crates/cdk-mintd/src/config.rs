@@ -138,6 +138,8 @@ pub enum LnBackend {
     LdkNode,
     #[cfg(feature = "grpc-processor")]
     GrpcProcessor,
+    #[cfg(feature = "portalwallet")]
+    PortalWallet,
 }
 
 impl std::str::FromStr for LnBackend {
@@ -157,6 +159,8 @@ impl std::str::FromStr for LnBackend {
             "ldk-node" | "ldknode" => Ok(LnBackend::LdkNode),
             #[cfg(feature = "grpc-processor")]
             "grpcprocessor" => Ok(LnBackend::GrpcProcessor),
+            #[cfg(feature = "portalwallet")]
+            "portalwallet" => Ok(LnBackend::PortalWallet),
             _ => Err(format!("Unknown Lightning backend: {s}")),
         }
     }
@@ -422,6 +426,12 @@ fn default_grpc_port() -> u16 {
     50051
 }
 
+#[cfg(feature = "portalwallet")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortalWallet {
+    pub supported_units: Vec<CurrencyUnit>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DatabaseEngine {
@@ -572,6 +582,8 @@ pub struct Settings {
     pub auth: Option<Auth>,
     #[cfg(feature = "prometheus")]
     pub prometheus: Option<Prometheus>,
+    #[cfg(feature = "portalwallet")]
+    pub portal_wallet: Option<PortalWallet>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

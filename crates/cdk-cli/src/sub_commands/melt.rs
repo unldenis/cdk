@@ -83,10 +83,11 @@ pub async fn pay(
             bail!("No mints available in the wallet");
         }
 
-        let balances_vec: Vec<(MintUrl, Amount)> = balances_map.into_iter().collect();
+        let balances_vec: Vec<(MintUrl, (Amount, CurrencyUnit))> =
+            balances_map.into_iter().collect();
 
         println!("\nAvailable mints and balances:");
-        for (index, (mint_url, balance)) in balances_vec.iter().enumerate() {
+        for (index, (mint_url, (balance, unit))) in balances_vec.iter().enumerate() {
             println!(
                 "  {}: {} - {} {}",
                 index,
@@ -127,7 +128,7 @@ pub async fn pay(
         // Show available mints and balances
         let balances = multi_mint_wallet.get_balances().await?;
         println!("\nAvailable mints and balances:");
-        for (i, (mint_url, balance)) in balances.iter().enumerate() {
+        for (i, (mint_url, (balance, unit))) in balances.iter().enumerate() {
             println!(
                 "  {}: {} - {} {}",
                 i,
@@ -277,7 +278,7 @@ pub async fn pay(
 
                     balances
                         .into_iter()
-                        .find(|(_, balance)| *balance > Amount::ZERO)
+                        .find(|(_, (balance, _))| *balance > Amount::ZERO)
                         .map(|(mint_url, _)| mint_url)
                         .ok_or_else(|| anyhow::anyhow!("No mint available for BOLT12 payment"))?
                 };
@@ -327,7 +328,7 @@ pub async fn pay(
 
                     balances
                         .into_iter()
-                        .find(|(_, balance)| *balance > Amount::ZERO)
+                        .find(|(_, (balance, _))| *balance > Amount::ZERO)
                         .map(|(mint_url, _)| mint_url)
                         .ok_or_else(|| anyhow::anyhow!("No mint available for BIP353 payment"))?
                 };

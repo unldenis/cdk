@@ -44,7 +44,7 @@ async fn select_mint(
     }
 
     println!("\nAvailable mints:");
-    for (i, (mint_url, balance)) in available_mints.iter().enumerate() {
+    for (i, (mint_url, (balance, unit))) in available_mints.iter().enumerate() {
         println!(
             "  {}: {} - {} {}",
             i,
@@ -122,7 +122,8 @@ pub async fn transfer(
     let balances = multi_mint_wallet.get_balances().await?;
     let source_balance = balances
         .get(&source_mint_url)
-        .copied()
+        .map(|(balance, _)| balance)
+        .cloned()
         .unwrap_or(Amount::ZERO);
 
     if source_balance == Amount::ZERO {

@@ -9,6 +9,7 @@ use cdk::Amount;
 use clap::Args;
 
 use crate::utils::get_number_input;
+use cdk::nuts::CurrencyUnit;
 
 #[derive(Args)]
 pub struct SendSubCommand {
@@ -74,10 +75,11 @@ pub async fn send(
             return Err(anyhow!("No mints available in the wallet"));
         }
 
-        let balances_vec: Vec<(MintUrl, Amount)> = balances_map.into_iter().collect();
+        let balances_vec: Vec<(MintUrl, (Amount, CurrencyUnit))> =
+            balances_map.into_iter().collect();
 
         println!("\nAvailable mints and balances:");
-        for (index, (mint_url, balance)) in balances_vec.iter().enumerate() {
+        for (index, (mint_url, (balance, unit))) in balances_vec.iter().enumerate() {
             println!(
                 "  {}: {} - {} {}",
                 index,
@@ -284,7 +286,7 @@ pub async fn send(
         let balances = multi_mint_wallet.get_balances().await?;
         let best_mint = balances
             .into_iter()
-            .find(|(_, balance)| *balance >= token_amount)
+            .find(|(_, (balance, _))| *balance >= token_amount)
             .map(|(mint_url, _)| mint_url)
             .ok_or_else(|| anyhow!("No mint has sufficient balance for the requested amount"))?;
 
