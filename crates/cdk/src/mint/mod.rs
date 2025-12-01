@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use cdk_common::amount::to_unit;
-use cdk_common::common::{PaymentProcessorKey, QuoteTTL};
+use cdk_common::common::{PaymentProcessorKey, QuoteTTL, UnitMetadata};
 #[cfg(feature = "auth")]
 use cdk_common::database::DynMintAuthDatabase;
 use cdk_common::database::{self, DynMintDatabase};
@@ -76,6 +76,7 @@ pub struct Mint {
     keysets: Arc<ArcSwap<Vec<SignatoryKeySet>>>,
     /// Background task management
     task_state: Arc<Mutex<TaskState>>,
+    keys_metadata: Arc<HashMap<CurrencyUnit, UnitMetadata>>,
 }
 
 /// State for managing background tasks
@@ -94,6 +95,7 @@ impl Mint {
         signatory: Arc<dyn Signatory + Send + Sync>,
         localstore: DynMintDatabase,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
+        keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
     ) -> Result<Self, Error> {
         Self::new_internal(
             mint_info,
@@ -102,6 +104,7 @@ impl Mint {
             #[cfg(feature = "auth")]
             None,
             payment_processors,
+            keys_metadata,
         )
         .await
     }
@@ -114,6 +117,7 @@ impl Mint {
         localstore: DynMintDatabase,
         auth_localstore: DynMintAuthDatabase,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
+        keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
     ) -> Result<Self, Error> {
         Self::new_internal(
             mint_info,
@@ -121,6 +125,7 @@ impl Mint {
             localstore,
             Some(auth_localstore),
             payment_processors,
+            keys_metadata,
         )
         .await
     }
@@ -133,6 +138,7 @@ impl Mint {
         localstore: DynMintDatabase,
         #[cfg(feature = "auth")] auth_localstore: Option<DynMintAuthDatabase>,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
+        keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
     ) -> Result<Self, Error> {
         let keysets = signatory.keysets().await?;
         if !keysets
@@ -219,6 +225,7 @@ impl Mint {
             auth_localstore,
             keysets: Arc::new(ArcSwap::new(keysets.keysets.into())),
             task_state: Arc::new(Mutex::new(TaskState::default())),
+            keys_metadata: Arc::new(keys_metadata),
         })
     }
 
@@ -972,6 +979,12 @@ impl Mint {
 
         total_redeemed
     }
+
+    /// Get unit metadata
+    pub fn get_unit_metadata(&self, unit: CurrencyUnit) -> Option<UnitMetadata> {
+        self.keys_metadata.get(&unit).cloned()
+    }
+
 }
 
 #[cfg(test)]
@@ -1022,7 +1035,7 @@ mod tests {
             .expect("Failed to create signatory"),
         );
 
-        Mint::new(MintInfo::default(), signatory, localstore, HashMap::new())
+        Mint::new(MintInfo::default(), signatory, localstore, HashMap::new(), HashMap::new())
             .await
             .unwrap()
     }

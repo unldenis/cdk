@@ -193,6 +193,17 @@ impl Default for QuoteTTL {
     }
 }
 
+/// Unit Metadata
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnitMetadata {
+    /// Human readable description of the unit
+    pub description: String,
+    /// URL for more info
+    pub url: String,
+    /// Whether the unit is non-fungible
+    pub is_non_fungible: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;

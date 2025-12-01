@@ -8,6 +8,11 @@ use cdk_common::common::QuoteTTL;
 use config::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "portalwallet")]
+use std::collections::HashMap;
+#[cfg(feature = "portalwallet")]
+use cdk_common::common::UnitMetadata;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum LoggingOutput {
@@ -430,6 +435,7 @@ fn default_grpc_port() -> u16 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortalWallet {
     pub supported_units: Vec<CurrencyUnit>,
+    pub unit_info: HashMap<CurrencyUnit, UnitMetadata>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]

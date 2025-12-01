@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bitcoin::bip32::DerivationPath;
+use cdk_common::common::UnitMetadata;
 use cdk_common::database::{DynMintDatabase, MintKeysDatabase};
 use cdk_common::error::Error;
 use cdk_common::nut04::MintMethodOptions;
@@ -36,6 +37,7 @@ pub struct MintBuilder {
     payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
     supported_units: HashMap<CurrencyUnit, (u64, u8)>,
     custom_paths: HashMap<CurrencyUnit, DerivationPath>,
+    keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
 }
 
 impl MintBuilder {
@@ -62,6 +64,7 @@ impl MintBuilder {
             payment_processors: HashMap::new(),
             supported_units: HashMap::new(),
             custom_paths: HashMap::new(),
+            keys_metadata: HashMap::new(),
         }
     }
 
@@ -312,6 +315,13 @@ impl MintBuilder {
         Ok(())
     }
 
+    /// Set unit metadata
+    pub fn set_unit_metadata(mut self, unit: &CurrencyUnit, metadata: UnitMetadata) -> Self {
+        self.keys_metadata.insert(unit.clone(), metadata);
+        self
+    }    
+
+
     /// Build the mint with the provided signatory
     pub async fn build_with_signatory(
         self,
@@ -325,6 +335,7 @@ impl MintBuilder {
                 self.localstore,
                 auth_localstore,
                 self.payment_processors,
+                self.keys_metadata,
             )
             .await;
         }
@@ -333,6 +344,7 @@ impl MintBuilder {
             signatory,
             self.localstore,
             self.payment_processors,
+            self.keys_metadata,
         )
         .await
     }

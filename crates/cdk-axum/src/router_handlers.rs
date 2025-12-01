@@ -23,6 +23,10 @@ use crate::auth::AuthHeader;
 use crate::ws::main_websocket;
 use crate::MintState;
 
+use cdk_common::common::UnitMetadata;
+use cdk::nuts::CurrencyUnit;
+use std::str::FromStr;
+
 const PREFER_HEADER_KEY: &str = "Prefer";
 
 /// Header extractor for the Prefer header
@@ -683,4 +687,38 @@ where
     };
 
     (status_code, Json(err_response)).into_response()
+}
+
+
+
+#[cfg_attr(feature = "swagger", utoipa::path(
+    get,
+    context_path = "/v1",
+    path = "/unit/{unit}",
+    params(
+        ("unit" = String, description = "The unit"),
+    ),
+    responses(
+        (status = 200, description = "Successful response", body = KeysResponse, content_type = "application/json"),
+        (status = 500, description = "Server error", body = ErrorResponse, content_type = "application/json")
+    )
+))]
+/// Get the metadata of a specific keyset
+///
+/// Get the metadata of the mint from a specific keyset ID.
+#[instrument(skip_all, fields(unit = ?unit))]
+pub(crate) async fn get_unit_metadata(
+    State(state): State<MintState>,
+    Path(unit): Path<String>,
+) -> Result<Json<UnitMetadata>, Response> {
+    let unit = cdk::nuts::nut00::CurrencyUnit::from_str(&unit).map_err(|err| {
+        tracing::error!("Could not parse unit: {}", err);
+        into_response(cdk::Error::UnsupportedUnit)
+    })?;
+    let metadata = state.mint.get_unit_metadata(unit).ok_or_else(|| {
+        tracing::error!("Could not get unit metadata");
+        into_response(cdk::Error::UnsupportedUnit)
+    })?;
+    Ok(Json(metadata))
+
 }

@@ -573,7 +573,15 @@ async fn configure_lightning_backend(
                     Arc::new(portal),
                 )
                 .await?;
+            
+            
+                if let Some(unit_metadata) = portal_wallet.unit_info.get(&unit) {
+                    mint_builder = mint_builder.set_unit_metadata(&unit, unit_metadata.clone());
+                }
             }
+
+
+
         }
         LnBackend::None => {
             tracing::error!(
