@@ -81,7 +81,22 @@ impl Mint {
                     quote.id
                 );
 
-                let amount_paid = to_unit(payment.payment_amount, &payment.unit, &quote.unit)?;
+                let amount_paid = if payment.unit == quote.unit {
+                    // Units match, no conversion needed
+                    payment.payment_amount
+                } else {
+                    // Try to convert units
+                    to_unit(payment.payment_amount, &payment.unit, &quote.unit).map_err(|e| {
+                        tracing::error!(
+                            "Cannot convert payment amount from {} to {} for quote {}: {:?}",
+                            payment.unit,
+                            quote.unit,
+                            quote.id,
+                            e
+                        );
+                        e
+                    })?
+                };
 
                 match tx
                     .increment_mint_quote_amount_paid(

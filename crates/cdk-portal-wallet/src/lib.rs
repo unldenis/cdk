@@ -45,7 +45,7 @@ impl SimpleWallet {
             wait_invoice_is_active: Arc::new(AtomicBool::new(false)),
             settings: Bolt11Settings {
                 mpp: false,
-                unit: unit.clone(),
+                unit: CurrencyUnit::Msat,
                 invoice_description: true,
                 amountless: false,
                 bolt12: false,
@@ -239,7 +239,7 @@ impl MintPayment for SimpleWallet {
                 payment_proof: Some(invoice_id.clone()),
                 status,
                 total_spent: Amount::from(1),
-                unit: self.unit.clone(),
+                unit: CurrencyUnit::Msat,
             });
         }
         Err(payment::Error::Custom("Not found".to_string()))
