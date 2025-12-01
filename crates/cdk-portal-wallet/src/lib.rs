@@ -236,7 +236,7 @@ impl MintPayment for SimpleWallet {
                 payment_proof: Some(invoice_id.clone()),
                 status,
                 total_spent: *amount,
-                unit: CurrencyUnit::Msat,
+                unit: unit.clone(),
             });
         }
         Err(payment::Error::Custom("Not found".to_string()))

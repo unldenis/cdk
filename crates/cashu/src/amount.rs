@@ -415,6 +415,13 @@ where
         (CurrencyUnit::Msat, CurrencyUnit::Sat) => Ok((amount / MSAT_IN_SAT).into()),
         (CurrencyUnit::Usd, CurrencyUnit::Usd) => Ok(amount.into()),
         (CurrencyUnit::Eur, CurrencyUnit::Eur) => Ok(amount.into()),
+        (CurrencyUnit::Custom(unit), CurrencyUnit::Custom(target_unit)) => {
+            if unit == target_unit {
+                Ok(amount.into())
+            } else {
+                Err(Error::CannotConvertUnits)
+            }
+        }
         _ => Err(Error::CannotConvertUnits),
     }
 }
