@@ -27,11 +27,10 @@ use serde_json::Value;
 pub struct SimpleWallet {
     sender: Sender<[u8; 32]>,
     receiver: Arc<Mutex<Option<Receiver<[u8; 32]>>>>,
-    invoices: Arc<Mutex<HashMap<[u8; 32], (String, bool)>>>, // payment_hash -> (invoice_id, paid)
+    invoices: Arc<Mutex<HashMap<[u8; 32], (String, bool, Amount, CurrencyUnit)>>>, // payment_hash -> (invoice_id, paid, amount, unit)
     wait_invoice_cancel_token: CancellationToken,
     wait_invoice_is_active: Arc<AtomicBool>,
     settings: Bolt11Settings,
-    unit: CurrencyUnit,
 }
 
 impl SimpleWallet {
@@ -50,7 +49,6 @@ impl SimpleWallet {
                 amountless: false,
                 bolt12: false,
             },
-            unit,
         }
     }
 }
@@ -78,20 +76,18 @@ impl MintPayment for SimpleWallet {
         let mut slot = self.receiver.lock().await;
         let receiver = slot.take();
         let invoices = self.invoices.clone();
-        let unit = self.unit.clone();
 
         if let Some(receiver) = receiver {
             let stream = ReceiverStream::new(receiver).filter_map(move |payment_hash| {
                 let invoices = invoices.clone();
-                let unit = unit.clone();
                 async move {
                     let guard = invoices.lock().await;
-                    if let Some((invoice_id, paid)) = guard.get(&payment_hash) {
+                    if let Some((invoice_id, paid, amount, unit)) = guard.get(&payment_hash) {
                         if *paid {
                             Some(Event::PaymentReceived(WaitPaymentResponse {
                                 payment_identifier: PaymentIdentifier::PaymentHash(payment_hash),
-                                payment_amount: Amount::from(1),
-                                unit,
+                                payment_amount: *amount,
+                                unit: unit.clone(),
                                 payment_id: invoice_id.clone(),
                             }))
                         } else {
@@ -151,9 +147,9 @@ impl MintPayment for SimpleWallet {
             }
         };
         let mut invoices = self.invoices.lock().await;
-        if let Some((payment_hash, paid)) = invoices
+        if let Some((payment_hash, paid, amount, unit)) = invoices
             .iter_mut()
-            .find_map(|(hash, (id, paid))| (id == &invoice_id).then_some((hash, paid)))
+            .find_map(|(hash, (id, paid, amount, unit))| (id == &invoice_id).then_some((hash, paid, amount, unit)))
         {
             *paid = true;
             // Optionally, you could do self.sender.send(*payment_hash).await, but we already auto-send.
@@ -161,8 +157,8 @@ impl MintPayment for SimpleWallet {
                 payment_lookup_id: PaymentIdentifier::PaymentHash(*payment_hash),
                 payment_proof: Some(invoice_id.clone()),
                 status: MeltQuoteState::Paid,
-                total_spent: Amount::from(1),
-                unit: self.unit.clone(),
+                total_spent: *amount,
+                unit: unit.clone(),
             })
         } else {
             Err(payment::Error::Custom("Invoice not found".to_string()))
@@ -176,20 +172,21 @@ impl MintPayment for SimpleWallet {
     ) -> Result<CreateIncomingPaymentResponse, Self::Err> {
         let (amount, _expiry) = match options {
             IncomingPaymentOptions::Bolt11(ref bolt11_options) => {
-                (bolt11_options.amount, bolt11_options.unix_expiry)
+                (Some(bolt11_options.amount), bolt11_options.unix_expiry)
             }
-            IncomingPaymentOptions::Bolt12(_) => {
-                return Err(payment::Error::Custom("Unsupported Bolt12".to_string()))
+            IncomingPaymentOptions::Bolt12(ref bolt12_options) => {
+                (bolt12_options.amount, bolt12_options.unix_expiry)
             }
         };
         let invoice_id = Uuid::new_v4().to_string();
         let random_hash: [u8; 32] = rand::thread_rng().gen();
-
+        let payment_amount = amount.unwrap_or(Amount::ZERO);
+        let unit = _unit.clone();
         // Insert as paid at creation (auto-pay)
         self.invoices
             .lock()
             .await
-            .insert(random_hash, (invoice_id.clone(), true));
+            .insert(random_hash, (invoice_id.clone(), true, payment_amount, unit));
 
         // Notify immediately
         let _ = self.sender.send(random_hash).await;
@@ -210,12 +207,12 @@ impl MintPayment for SimpleWallet {
             _ => return Ok(vec![]),
         };
         let guard = self.invoices.lock().await;
-        if let Some((invoice_id, paid)) = guard.get(payment_hash) {
+        if let Some((invoice_id, paid, amount, unit)) = guard.get(payment_hash) {
             if *paid {
                 return Ok(vec![WaitPaymentResponse {
                     payment_identifier: payment_identifier.clone(),
-                    payment_amount: Amount::from(1),
-                    unit: self.unit.clone(),
+                    payment_amount: *amount,
+                    unit: unit.clone(),
                     payment_id: invoice_id.clone(),
                 }]);
             }
@@ -232,13 +229,13 @@ impl MintPayment for SimpleWallet {
             _ => return Err(payment::Error::Custom("Not found".to_string())),
         };
         let guard = self.invoices.lock().await;
-        if let Some((invoice_id, paid)) = guard.get(payment_hash) {
+        if let Some((invoice_id, paid, amount, unit)) = guard.get(payment_hash) {
             let status = if *paid { MeltQuoteState::Paid } else { MeltQuoteState::Unpaid };
             return Ok(MakePaymentResponse {
                 payment_lookup_id: payment_identifier.clone(),
                 payment_proof: Some(invoice_id.clone()),
                 status,
-                total_spent: Amount::from(1),
+                total_spent: *amount,
                 unit: CurrencyUnit::Msat,
             });
         }
