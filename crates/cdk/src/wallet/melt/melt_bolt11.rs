@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use cdk_common::amount::SplitTarget;
 use cdk_common::wallet::{Transaction, TransactionDirection};
 use cdk_common::PaymentMethod;
 use lightning_invoice::Bolt11Invoice;
@@ -139,7 +138,7 @@ impl Wallet {
         proofs: Proofs,
         metadata: HashMap<String, String>,
     ) -> Result<Melted, Error> {
-        let quote_info = self
+        let mut quote_info = self
             .localstore
             .get_melt_quote(quote_id)
             .await?
@@ -155,10 +154,13 @@ impl Wallet {
             return Err(Error::InsufficientFunds);
         }
 
-        let ys = proofs.ys()?;
-        self.localstore
-            .update_proofs_state(ys, State::Pending)
-            .await?;
+        // Since the proofs may be external (not in our database), add them first
+        let proofs_info = proofs
+            .clone()
+            .into_iter()
+            .map(|p| ProofInfo::new(p, self.mint_url.clone(), State::Pending, self.unit.clone()))
+            .collect::<Result<Vec<ProofInfo>, _>>()?;
+        self.localstore.update_proofs(proofs_info, vec![]).await?;
 
         let active_keyset_id = self.fetch_active_keyset().await?.id;
 
@@ -274,7 +276,11 @@ impl Wallet {
             None => Vec::new(),
         };
 
-        self.localstore.remove_melt_quote(&quote_info.id).await?;
+        quote_info.state = cdk_common::MeltQuoteState::Paid;
+
+        let payment_request = quote_info.request.clone();
+
+        self.localstore.add_melt_quote(quote_info).await?;
 
         let deleted_ys = proofs.ys()?;
         self.localstore
@@ -294,7 +300,7 @@ impl Wallet {
                 memo: None,
                 metadata,
                 quote_id: Some(quote_id.to_string()),
-                payment_request: Some(quote_info.request),
+                payment_request: Some(payment_request),
                 payment_proof: payment_preimage,
             })
             .await?;
@@ -390,31 +396,14 @@ impl Wallet {
             .map(|k| k.id)
             .collect();
         let keyset_fees = self.get_keyset_fees_and_amounts().await?;
-        let (mut input_proofs, mut exchange) = Wallet::select_exact_proofs(
+
+        let input_proofs = Wallet::select_proofs(
             inputs_needed_amount,
             available_proofs,
             &active_keyset_ids,
             &keyset_fees,
             true,
         )?;
-
-        if let Some((proof, exact_amount)) = exchange.take() {
-            let new_proofs = self
-                .swap(
-                    Some(exact_amount),
-                    SplitTarget::None,
-                    vec![proof],
-                    None,
-                    false,
-                )
-                .await?
-                .ok_or_else(|| {
-                    tracing::error!("Received empty proofs");
-                    Error::Internal
-                })?;
-
-            input_proofs.extend_from_slice(&new_proofs);
-        }
 
         self.melt_proofs_with_metadata(quote_id, input_proofs, metadata)
             .await
