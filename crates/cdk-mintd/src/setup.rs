@@ -376,7 +376,7 @@ impl LnBackendSetup for config::PortalWallet {
         _work_dir: &Path,
         _kv_store: Option<Arc<dyn MintKVStore<Err = cdk::cdk_database::Error> + Send + Sync>>,
     ) -> anyhow::Result<cdk_portal_wallet::SimpleWallet> {
-        let portal_wallet = cdk_portal_wallet::SimpleWallet::new(unit);
+        let portal_wallet = cdk_portal_wallet::SimpleWallet::new();
 
         Ok(portal_wallet)
     }

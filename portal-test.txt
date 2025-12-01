@@ -1,0 +1,5 @@
+
+
+cargo run -p cdk-cli -- --unit casa balance --unit casa
+
+cargo run -p cdk-cli -- --unit casa mint "http://127.0.0.1:8085" 100 "my real mint"

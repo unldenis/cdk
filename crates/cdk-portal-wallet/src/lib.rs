@@ -34,7 +34,7 @@ pub struct SimpleWallet {
 }
 
 impl SimpleWallet {
-    pub fn new(unit: CurrencyUnit) -> Self {
+    pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(32);
         Self {
             sender,
@@ -125,7 +125,7 @@ impl MintPayment for SimpleWallet {
                 return Err(payment::Error::Custom("Unsupported Bolt12".to_string()))
             }
         };
-        let random_hash: [u8; 32] = rand::thread_rng().gen();
+        let random_hash: [u8; 32] = rand::rng().random();
         Ok(PaymentQuoteResponse {
             request_lookup_id: Some(PaymentIdentifier::PaymentHash(random_hash)),
             amount: Amount::from(amount_msat),
@@ -174,12 +174,12 @@ impl MintPayment for SimpleWallet {
             IncomingPaymentOptions::Bolt11(ref bolt11_options) => {
                 (Some(bolt11_options.amount), bolt11_options.unix_expiry)
             }
-            IncomingPaymentOptions::Bolt12(ref bolt12_options) => {
-                (bolt12_options.amount, bolt12_options.unix_expiry)
+            IncomingPaymentOptions::Bolt12(_) => {
+                return Err(payment::Error::Custom("Unsupported Bolt12".to_string()))
             }
         };
         let invoice_id = Uuid::new_v4().to_string();
-        let random_hash: [u8; 32] = rand::thread_rng().gen();
+        let random_hash: [u8; 32] = rand::rng().random();
         let payment_amount = amount.unwrap_or(Amount::ZERO);
         let unit = _unit.clone();
         // Insert as paid at creation (auto-pay)
