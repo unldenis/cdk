@@ -203,7 +203,7 @@ impl MultiMintWallet {
     pub async fn get_balances(&self) -> Result<BalanceMap, FfiError> {
         let balances = self.inner.get_balances().await?;
         let mut balance_map = HashMap::new();
-        for (mint_url, amount) in balances {
+        for (mint_url, (amount, unit)) in balances {
             balance_map.insert(mint_url.to_string(), amount.into());
         }
         Ok(balance_map)

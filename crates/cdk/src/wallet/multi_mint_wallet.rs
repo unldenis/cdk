@@ -522,12 +522,12 @@ impl MultiMintWallet {
 
     /// Get wallet balances for all mints
     #[instrument(skip(self))]
-    pub async fn get_balances(&self) -> Result<BTreeMap<MintUrl, Amount>, Error> {
+    pub async fn get_balances(&self) -> Result<BTreeMap<MintUrl, (Amount, CurrencyUnit)>, Error> {
         let mut balances = BTreeMap::new();
 
         for (mint_url, wallet) in self.wallets.read().await.iter() {
             let wallet_balance = wallet.total_balance().await?;
-            balances.insert(mint_url.clone(), wallet_balance);
+            balances.insert(mint_url.clone(), (wallet_balance, wallet.unit.clone()));
         }
 
         Ok(balances)

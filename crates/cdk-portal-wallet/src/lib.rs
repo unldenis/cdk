@@ -34,7 +34,7 @@ pub struct SimpleWallet {
 }
 
 impl SimpleWallet {
-    pub fn new() -> Self {
+    pub fn new(currency_unit: CurrencyUnit) -> Self {
         let (sender, receiver) = mpsc::channel(32);
         Self {
             sender,
@@ -44,7 +44,7 @@ impl SimpleWallet {
             wait_invoice_is_active: Arc::new(AtomicBool::new(false)),
             settings: Bolt11Settings {
                 mpp: false,
-                unit: CurrencyUnit::Msat,
+                unit: currency_unit,
                 invoice_description: true,
                 amountless: false,
                 bolt12: false,
@@ -77,9 +77,13 @@ impl MintPayment for SimpleWallet {
         let receiver = slot.take();
         let invoices = self.invoices.clone();
 
+
+
+
         if let Some(receiver) = receiver {
             let stream = ReceiverStream::new(receiver).filter_map(move |payment_hash| {
                 let invoices = invoices.clone();
+
                 async move {
                     let guard = invoices.lock().await;
                     if let Some((invoice_id, paid, amount, unit)) = guard.get(&payment_hash) {
@@ -107,7 +111,7 @@ impl MintPayment for SimpleWallet {
 
     async fn get_payment_quote(
         &self,
-        unit: &CurrencyUnit,
+        _unit: &CurrencyUnit,
         options: OutgoingPaymentOptions,
     ) -> Result<PaymentQuoteResponse, Self::Err> {
         let amount_msat = match options {
@@ -131,7 +135,7 @@ impl MintPayment for SimpleWallet {
             amount: Amount::from(amount_msat),
             fee: Amount::ZERO,
             state: MeltQuoteState::Unpaid,
-            unit: unit.clone(),
+            unit: CurrencyUnit::Msat,
         })
     }
 
@@ -167,7 +171,7 @@ impl MintPayment for SimpleWallet {
 
     async fn create_incoming_payment_request(
         &self,
-        _unit: &CurrencyUnit,
+        unit: &CurrencyUnit,
         options: IncomingPaymentOptions,
     ) -> Result<CreateIncomingPaymentResponse, Self::Err> {
         let (amount, _expiry) = match options {
@@ -181,12 +185,11 @@ impl MintPayment for SimpleWallet {
         let invoice_id = Uuid::new_v4().to_string();
         let random_hash: [u8; 32] = rand::rng().random();
         let payment_amount = amount.unwrap_or(Amount::ZERO);
-        let unit = _unit.clone();
         // Insert as paid at creation (auto-pay)
         self.invoices
             .lock()
             .await
-            .insert(random_hash, (invoice_id.clone(), true, payment_amount, unit));
+            .insert(random_hash, (invoice_id.clone(), true, payment_amount, unit.clone()));
 
         // Notify immediately
         let _ = self.sender.send(random_hash).await;
