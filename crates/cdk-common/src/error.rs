@@ -68,6 +68,9 @@ pub enum Error {
     /// Clear Auth Failed
     #[error("Clear Auth Failed")]
     ClearAuthFailed,
+    /// Static Auth Token Mismatch
+    #[error("Static Auth Token Mismatch")]
+    StaticAuthTokenMismatch,
     /// Blind Auth Failed
     #[error("Blind Auth Failed")]
     BlindAuthFailed,
@@ -543,6 +546,10 @@ impl From<Error> for ErrorResponse {
                 code: ErrorCode::ClearAuthFailed,
                 detail: Error::ClearAuthFailed.to_string(),
             },
+            Error::StaticAuthTokenMismatch => ErrorResponse {   
+                code: ErrorCode::StaticAuthTokenMismatch,
+                detail: Error::StaticAuthTokenMismatch.to_string(),
+            },
             Error::BlindAuthRequired => ErrorResponse {
                 code: ErrorCode::BlindAuthRequired,
                 detail: Error::BlindAuthRequired.to_string(),
@@ -706,6 +713,8 @@ pub enum ErrorCode {
     ClearAuthRequired,
     /// Clear Auth Failed
     ClearAuthFailed,
+    /// Static Auth Token Mismatch
+    StaticAuthTokenMismatch,
     /// Blind Auth Required
     BlindAuthRequired,
     /// Blind Auth Failed
@@ -744,6 +753,7 @@ impl ErrorCode {
             20009 => Self::DuplicateSignature,
             30001 => Self::ClearAuthRequired,
             30002 => Self::ClearAuthFailed,
+            30003 => Self::StaticAuthTokenMismatch,
             31001 => Self::BlindAuthRequired,
             31002 => Self::BlindAuthFailed,
             _ => Self::Unknown(code),
@@ -777,6 +787,7 @@ impl ErrorCode {
             Self::DuplicateSignature => 20009,
             Self::ClearAuthRequired => 30001,
             Self::ClearAuthFailed => 30002,
+            Self::StaticAuthTokenMismatch => 30003,
             Self::BlindAuthRequired => 31001,
             Self::BlindAuthFailed => 31002,
             Self::Unknown(code) => *code,

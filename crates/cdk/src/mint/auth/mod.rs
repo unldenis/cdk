@@ -23,6 +23,18 @@ impl Mint {
     /// Verify Clear auth
     #[instrument(skip_all, fields(token_len = token.len()))]
     pub async fn verify_clear_auth(&self, token: String) -> Result<(), Error> {
+        // Check static token first if configured
+        if let Some(static_token) = &self.static_auth_token {
+            if token == *static_token {
+                // tracing::debug!("Static auth token verified successfully");
+                return Ok(());
+            }
+            // If static token is set but doesn't match, fail
+            tracing::warn!("Static auth token mismatch");
+            return Err(Error::StaticAuthTokenMismatch);
+        }
+        
+        // Fall back to OIDC verification
         Ok(self
             .oidc_client
             .as_ref()

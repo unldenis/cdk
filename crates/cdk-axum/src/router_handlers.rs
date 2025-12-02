@@ -680,7 +680,7 @@ where
         | ErrorCode::BlindAuthRequired => StatusCode::BAD_REQUEST,
 
         // Auth failures (401 Unauthorized)
-        ErrorCode::ClearAuthFailed | ErrorCode::BlindAuthFailed => StatusCode::UNAUTHORIZED,
+        ErrorCode::ClearAuthFailed | ErrorCode::StaticAuthTokenMismatch | ErrorCode::BlindAuthFailed => StatusCode::UNAUTHORIZED,
 
         // Lightning/payment errors and unknown errors (500 Internal Server Error)
         ErrorCode::LightningError | ErrorCode::Unknown(_) => StatusCode::INTERNAL_SERVER_ERROR,

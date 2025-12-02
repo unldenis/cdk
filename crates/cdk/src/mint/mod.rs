@@ -72,6 +72,9 @@ pub struct Mint {
     pubsub_manager: Arc<PubSubManager>,
     #[cfg(feature = "auth")]
     oidc_client: Option<OidcClient>,
+    /// Static auth token (if set, this token will be accepted for clear auth)
+    #[cfg(feature = "auth")]
+    static_auth_token: Option<String>,
     /// In-memory keyset
     keysets: Arc<ArcSwap<Vec<SignatoryKeySet>>>,
     /// Background task management
@@ -103,6 +106,8 @@ impl Mint {
             localstore,
             #[cfg(feature = "auth")]
             None,
+            #[cfg(feature = "auth")]
+            None,
             payment_processors,
             keys_metadata,
         )
@@ -115,7 +120,8 @@ impl Mint {
         mint_info: MintInfo,
         signatory: Arc<dyn Signatory + Send + Sync>,
         localstore: DynMintDatabase,
-        auth_localstore: DynMintAuthDatabase,
+        auth_localstore: Option<DynMintAuthDatabase>,
+        static_auth_token: Option<String>,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
         keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
     ) -> Result<Self, Error> {
@@ -123,7 +129,8 @@ impl Mint {
             mint_info,
             signatory,
             localstore,
-            Some(auth_localstore),
+            auth_localstore,
+            static_auth_token,
             payment_processors,
             keys_metadata,
         )
@@ -137,6 +144,7 @@ impl Mint {
         signatory: Arc<dyn Signatory + Send + Sync>,
         localstore: DynMintDatabase,
         #[cfg(feature = "auth")] auth_localstore: Option<DynMintAuthDatabase>,
+        #[cfg(feature = "auth")] static_auth_token: Option<String>,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
         keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
     ) -> Result<Self, Error> {
@@ -220,6 +228,8 @@ impl Mint {
                     Some(nut21.client_id.clone()),
                 )
             }),
+            #[cfg(feature = "auth")]
+            static_auth_token,
             payment_processors,
             #[cfg(feature = "auth")]
             auth_localstore,

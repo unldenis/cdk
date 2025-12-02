@@ -250,6 +250,9 @@ pub fn load_settings(work_dir: &Path, config_path: Option<PathBuf>) -> Result<co
         config::Settings::default()
     };
 
+    // ONLY FOR DEBUGGING BY PortalTechnologiesInc
+    tracing::trace!("Settings: {:?}", settings);
+
     // This check for any settings defined in ENV VARs
     // ENV VARS will take **priority** over those in the config
     settings.from_env()
@@ -842,6 +845,11 @@ async fn setup_authentication(
         );
         mint_builder =
             mint_builder.with_blind_auth(auth_settings.mint_max_bat, blind_auth_endpoints);
+
+        // Set static auth token if configured
+        if let Some(static_token) = &auth_settings.static_auth_token {
+            mint_builder = mint_builder.with_static_auth_token(static_token.clone());
+        }
 
         let mut tx = auth_localstore.begin_transaction().await?;
 

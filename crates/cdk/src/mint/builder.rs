@@ -34,6 +34,8 @@ pub struct MintBuilder {
     localstore: DynMintDatabase,
     #[cfg(feature = "auth")]
     auth_localstore: Option<DynMintAuthDatabase>,
+    #[cfg(feature = "auth")]
+    static_auth_token: Option<String>,
     payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
     supported_units: HashMap<CurrencyUnit, (u64, u8)>,
     custom_paths: HashMap<CurrencyUnit, DerivationPath>,
@@ -61,6 +63,8 @@ impl MintBuilder {
             localstore,
             #[cfg(feature = "auth")]
             auth_localstore: None,
+            #[cfg(feature = "auth")]
+            static_auth_token: None,
             payment_processors: HashMap::new(),
             supported_units: HashMap::new(),
             custom_paths: HashMap::new(),
@@ -126,6 +130,14 @@ impl MintBuilder {
 
         self
     }
+
+    /// Set static auth token for clear auth verification
+    #[cfg(feature = "auth")]
+    pub fn with_static_auth_token(mut self, token: String) -> Self {
+        self.static_auth_token = Some(token);
+        self
+    }
+    
 
     /// Set mint info
     pub fn with_mint_info(mut self, mint_info: MintInfo) -> Self {
@@ -326,14 +338,15 @@ impl MintBuilder {
     pub async fn build_with_signatory(
         self,
         signatory: Arc<dyn Signatory + Send + Sync>,
-    ) -> Result<Mint, Error> {
+    ) -> Result<Mint, Error> { 
         #[cfg(feature = "auth")]
         if let Some(auth_localstore) = self.auth_localstore {
             return Mint::new_with_auth(
                 self.mint_info,
                 signatory,
                 self.localstore,
-                auth_localstore,
+                Some(auth_localstore),
+                self.static_auth_token,
                 self.payment_processors,
                 self.keys_metadata,
             )

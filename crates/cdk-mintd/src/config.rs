@@ -557,6 +557,8 @@ pub struct Auth {
     /// Enable WebSocket authentication support
     #[serde(default = "default_blind")]
     pub websocket_auth: AuthType,
+    /// Static auth token (if set, this token will be accepted for clear auth instead of OIDC)
+    pub static_auth_token: Option<String>,
 }
 
 fn default_blind() -> AuthType {
