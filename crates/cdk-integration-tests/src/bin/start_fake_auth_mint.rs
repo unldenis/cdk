@@ -71,22 +71,23 @@ async fn start_fake_auth_mint(
     );
 
     // Enable authentication
-    settings.auth = Some(cdk_mintd::config::Auth {
-        auth_enabled: true,
-        openid_discovery,
-        openid_client_id: "cashu-client".to_string(),
-        mint_max_bat: 50,
-        mint: AuthType::Blind,
-        get_mint_quote: AuthType::Blind,
-        check_mint_quote: AuthType::Blind,
-        melt: AuthType::Blind,
-        get_melt_quote: AuthType::Blind,
-        check_melt_quote: AuthType::Blind,
-        swap: AuthType::Blind,
-        restore: AuthType::Blind,
-        check_proof_state: AuthType::Blind,
-        websocket_auth: AuthType::Blind,
-    });
+    // settings.auth = Some(cdk_mintd::config::Auth {
+    //     static_token: Some("test_static_token".to_string()),
+    //     auth_enabled: true,
+    //     openid_discovery,
+    //     openid_client_id: "cashu-client".to_string(),
+    //     mint_max_bat: 50,
+    //     mint: AuthType::Blind,
+    //     get_mint_quote: AuthType::Blind,
+    //     check_mint_quote: AuthType::Blind,
+    //     melt: AuthType::Blind,
+    //     get_melt_quote: AuthType::Blind,
+    //     check_melt_quote: AuthType::Blind,
+    //     swap: AuthType::Blind,
+    //     restore: AuthType::Blind,
+    //     check_proof_state: AuthType::Blind,
+    //     websocket_auth: AuthType::Blind,
+    // });
 
     // Set description for the mint
     settings.mint_info.description = "fake test mint with auth".to_string();

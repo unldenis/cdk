@@ -49,6 +49,8 @@ pub struct AuthWallet {
     auth_client: Arc<dyn AuthMintConnector + Send + Sync>,
     /// OIDC client for authentication
     oidc_client: Arc<RwLock<Option<OidcClient>>>,
+
+    pub static_token: Arc<RwLock<Option<String>>>,
 }
 
 impl AuthWallet {
@@ -60,6 +62,7 @@ impl AuthWallet {
         metadata_cache: Arc<MintMetadataCache>,
         protected_endpoints: HashMap<ProtectedEndpoint, AuthRequired>,
         oidc_client: Option<OidcClient>,
+        static_token: Option<String>,
     ) -> Self {
         let http_client = Arc::new(AuthHttpClient::new(mint_url.clone(), cat));
         Self {
@@ -70,6 +73,7 @@ impl AuthWallet {
             refresh_token: Arc::new(RwLock::new(None)),
             auth_client: http_client,
             oidc_client: Arc::new(RwLock::new(oidc_client)),
+            static_token: Arc::new(RwLock::new(static_token)),
         }
     }
 
@@ -92,6 +96,9 @@ impl AuthWallet {
             AuthToken::BlindAuth(_) => Err(Error::Custom(
                 "Cannot set blind auth token directly".to_string(),
             )),
+            AuthToken::StaticAuth(_) => Err(Error::Custom(
+                "Cannot set static auth token directly".to_string(),
+            )),
         }
     }
 
@@ -108,6 +115,10 @@ impl AuthWallet {
             AuthToken::BlindAuth(_) => Err(Error::Custom(
                 "Cannot set blind auth token directly".to_string(),
             )),
+            AuthToken::StaticAuth(static_token) => {
+                *self.static_token.write().await = Some(static_token.clone());
+                Ok(())
+            }
         }
     }
 
@@ -328,6 +339,14 @@ impl AuthWallet {
 
                     Ok(Some(auth_token))
                 }
+                AuthRequired::Static => {
+                    tracing::trace!("Static auth needed for request getting static token.");
+                    let static_token = self.static_token.read().await.clone().ok_or_else(|| {
+                        tracing::debug!("Static auth token not set");
+                        Error::Custom("Static auth token not set".to_string())
+                    })?;
+                    Ok(Some(AuthToken::StaticAuth(static_token)))
+                }
             },
             None => Ok(None),
         }
@@ -378,6 +397,10 @@ impl AuthWallet {
             AuthToken::BlindAuth(_) => {
                 tracing::error!("Blind auth set as client cat");
                 return Err(Error::ClearAuthFailed);
+            }
+            AuthToken::StaticAuth(_) => {
+                tracing::error!("Static auth set as client cat");
+                return Err(Error::StaticAuthFailed);
             }
         }
 

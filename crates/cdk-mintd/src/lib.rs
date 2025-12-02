@@ -250,6 +250,9 @@ pub fn load_settings(work_dir: &Path, config_path: Option<PathBuf>) -> Result<co
         config::Settings::default()
     };
 
+
+    println!("Settings: {:?}", settings);
+
     // This check for any settings defined in ENV VARs
     // ENV VARS will take **priority** over those in the config
     settings.from_env()
@@ -663,83 +666,25 @@ fn configure_cache(settings: &config::Settings, mint_builder: MintBuilder) -> Mi
     mint_builder.with_cache(Some(cache.ttl.as_secs()), cached_endpoints)
 }
 
-#[cfg(feature = "auth")]
 async fn setup_authentication(
     settings: &config::Settings,
     _work_dir: &Path,
     mut mint_builder: MintBuilder,
     _password: Option<String>,
 ) -> Result<MintBuilder> {
-    if let Some(auth_settings) = settings.auth.clone() {
-        use cdk_common::database::DynMintAuthDatabase;
-
-        tracing::info!("Auth settings are defined. {:?}", auth_settings);
-        let auth_localstore: DynMintAuthDatabase = match settings.database.engine {
-            #[cfg(feature = "sqlite")]
-            DatabaseEngine::Sqlite => {
-                #[cfg(feature = "sqlite")]
-                {
-                    let sql_db_path = _work_dir.join("cdk-mintd-auth.sqlite");
-                    #[cfg(not(feature = "sqlcipher"))]
-                    let sqlite_db = MintSqliteAuthDatabase::new(&sql_db_path).await?;
-                    #[cfg(feature = "sqlcipher")]
-                    let sqlite_db = {
-                        // Get password from command line arguments for sqlcipher
-                        MintSqliteAuthDatabase::new((sql_db_path, _password.unwrap())).await?
-                    };
-
-                    Arc::new(sqlite_db)
-                }
-                #[cfg(not(feature = "sqlite"))]
-                {
-                    bail!("SQLite support not compiled in. Enable the 'sqlite' feature to use SQLite database.")
-                }
-            }
-            #[cfg(feature = "postgres")]
-            DatabaseEngine::Postgres => {
-                #[cfg(feature = "postgres")]
-                {
-                    // Require dedicated auth database configuration - no fallback to main database
-                    let auth_db_config = settings.auth_database.as_ref().ok_or_else(|| {
-                        anyhow!("Auth database configuration is required when using PostgreSQL with authentication. Set [auth_database] section in config file or CDK_MINTD_AUTH_POSTGRES_URL environment variable")
-                    })?;
-
-                    let auth_pg_config = auth_db_config.postgres.as_ref().ok_or_else(|| {
-                        anyhow!("PostgreSQL auth database configuration is required when using PostgreSQL with authentication. Set [auth_database.postgres] section in config file or CDK_MINTD_AUTH_POSTGRES_URL environment variable")
-                    })?;
-
-                    if auth_pg_config.url.is_empty() {
-                        bail!("Auth database PostgreSQL URL is required and cannot be empty. Set it in config file [auth_database.postgres] section or via CDK_MINTD_AUTH_POSTGRES_URL environment variable");
-                    }
-
-                    Arc::new(MintPgAuthDatabase::new(auth_pg_config.url.as_str()).await?)
-                }
-                #[cfg(not(feature = "postgres"))]
-                {
-                    bail!("PostgreSQL support not compiled in. Enable the 'postgres' feature to use PostgreSQL database.")
-                }
-            }
-            #[cfg(not(feature = "sqlite"))]
-            DatabaseEngine::Sqlite => {
-                bail!("SQLite support not compiled in. Enable the 'sqlite' feature to use SQLite database.")
-            }
-            #[cfg(not(feature = "postgres"))]
-            DatabaseEngine::Postgres => {
-                bail!("PostgreSQL support not compiled in. Enable the 'postgres' feature to use PostgreSQL database.")
-            }
-        };
-
+    let portal_auth = settings.portal_auth.clone().expect("Portal auth is required");
         let mut protected_endpoints = HashMap::new();
         let mut blind_auth_endpoints = vec![];
+        let mut static_auth_endpoints = vec![];
         let mut clear_auth_endpoints = vec![];
         let mut unprotected_endpoints = vec![];
 
         let mint_blind_auth_endpoint =
             ProtectedEndpoint::new(Method::Post, RoutePath::MintBlindAuth);
 
-        protected_endpoints.insert(mint_blind_auth_endpoint, AuthRequired::Clear);
+        protected_endpoints.insert(mint_blind_auth_endpoint, AuthRequired::Static);
 
-        clear_auth_endpoints.push(mint_blind_auth_endpoint);
+        static_auth_endpoints.push(mint_blind_auth_endpoint);
 
         // Helper function to add endpoint based on auth type
         let mut add_endpoint = |endpoint: ProtectedEndpoint, auth_type: &AuthType| {
@@ -752,6 +697,10 @@ async fn setup_authentication(
                     protected_endpoints.insert(endpoint, AuthRequired::Clear);
                     clear_auth_endpoints.push(endpoint);
                 }
+                AuthType::Static => {
+                    protected_endpoints.insert(endpoint, AuthRequired::Static);
+                    static_auth_endpoints.push(endpoint);
+                }
                 AuthType::None => {
                     unprotected_endpoints.push(endpoint);
                 }
@@ -762,7 +711,7 @@ async fn setup_authentication(
         {
             let mint_quote_protected_endpoint =
                 ProtectedEndpoint::new(cdk::nuts::Method::Post, RoutePath::MintQuoteBolt11);
-            add_endpoint(mint_quote_protected_endpoint, &auth_settings.get_mint_quote);
+            add_endpoint(mint_quote_protected_endpoint, &AuthType::Static);
         }
 
         // Check mint quote endpoint
@@ -771,7 +720,7 @@ async fn setup_authentication(
                 ProtectedEndpoint::new(Method::Get, RoutePath::MintQuoteBolt11);
             add_endpoint(
                 check_mint_protected_endpoint,
-                &auth_settings.check_mint_quote,
+                &AuthType::Static,
             );
         }
 
@@ -779,7 +728,7 @@ async fn setup_authentication(
         {
             let mint_protected_endpoint =
                 ProtectedEndpoint::new(cdk::nuts::Method::Post, RoutePath::MintBolt11);
-            add_endpoint(mint_protected_endpoint, &auth_settings.mint);
+            add_endpoint(mint_protected_endpoint, &AuthType::Static);
         }
 
         // Get melt quote endpoint
@@ -788,7 +737,7 @@ async fn setup_authentication(
                 cdk::nuts::Method::Post,
                 cdk::nuts::RoutePath::MeltQuoteBolt11,
             );
-            add_endpoint(melt_quote_protected_endpoint, &auth_settings.get_melt_quote);
+            add_endpoint(melt_quote_protected_endpoint, &AuthType::Static);
         }
 
         // Check melt quote endpoint
@@ -797,7 +746,7 @@ async fn setup_authentication(
                 ProtectedEndpoint::new(Method::Get, RoutePath::MeltQuoteBolt11);
             add_endpoint(
                 check_melt_protected_endpoint,
-                &auth_settings.check_melt_quote,
+                &AuthType::Static,
             );
         }
 
@@ -805,50 +754,45 @@ async fn setup_authentication(
         {
             let melt_protected_endpoint =
                 ProtectedEndpoint::new(Method::Post, RoutePath::MeltBolt11);
-            add_endpoint(melt_protected_endpoint, &auth_settings.melt);
+            add_endpoint(melt_protected_endpoint, &AuthType::Static);
         }
 
         // Swap endpoint
         {
             let swap_protected_endpoint = ProtectedEndpoint::new(Method::Post, RoutePath::Swap);
-            add_endpoint(swap_protected_endpoint, &auth_settings.swap);
+            add_endpoint(swap_protected_endpoint, &AuthType::Static);
         }
 
         // Restore endpoint
         {
             let restore_protected_endpoint =
                 ProtectedEndpoint::new(Method::Post, RoutePath::Restore);
-            add_endpoint(restore_protected_endpoint, &auth_settings.restore);
+            add_endpoint(restore_protected_endpoint, &AuthType::Static);
         }
 
         // Check proof state endpoint
         {
             let state_protected_endpoint =
                 ProtectedEndpoint::new(Method::Post, RoutePath::Checkstate);
-            add_endpoint(state_protected_endpoint, &auth_settings.check_proof_state);
+            add_endpoint(state_protected_endpoint, &AuthType::Static);
         }
 
         // Ws endpoint
         {
             let ws_protected_endpoint = ProtectedEndpoint::new(Method::Get, RoutePath::Ws);
-            add_endpoint(ws_protected_endpoint, &auth_settings.websocket_auth);
+            add_endpoint(ws_protected_endpoint, &AuthType::None);
         }
 
-        mint_builder = mint_builder.with_auth(
-            auth_localstore.clone(),
-            auth_settings.openid_discovery,
-            auth_settings.openid_client_id,
-            clear_auth_endpoints,
-        );
-        mint_builder =
-            mint_builder.with_blind_auth(auth_settings.mint_max_bat, blind_auth_endpoints);
+        // Set static token if provided and static auth endpoints are configured
+        if !static_auth_endpoints.is_empty() {
+            mint_builder = mint_builder.with_static_token(portal_auth.static_token);
 
-        let mut tx = auth_localstore.begin_transaction().await?;
+        } else {
+            tracing::warn!("No static auth endpoints configured");
+        }
 
-        tx.remove_protected_endpoints(unprotected_endpoints).await?;
-        tx.add_protected_endpoints(protected_endpoints).await?;
-        tx.commit().await?;
-    }
+        mint_builder = mint_builder.with_static_auth(static_auth_endpoints);
+    
     Ok(mint_builder)
 }
 

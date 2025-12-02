@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+#[cfg(feature = "auth")]
+use std::sync::RwLock;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
@@ -77,6 +79,8 @@ pub struct Mint {
     /// Background task management
     task_state: Arc<Mutex<TaskState>>,
     keys_metadata: Arc<HashMap<CurrencyUnit, UnitMetadata>>,
+    #[cfg(feature = "auth")]
+    static_token: Arc<Option<String>>,
 }
 
 /// State for managing background tasks
@@ -105,6 +109,8 @@ impl Mint {
             None,
             payment_processors,
             keys_metadata,
+            #[cfg(feature = "auth")]
+            None
         )
         .await
     }
@@ -118,6 +124,7 @@ impl Mint {
         auth_localstore: DynMintAuthDatabase,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
         keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
+        static_token: Option<String>,
     ) -> Result<Self, Error> {
         Self::new_internal(
             mint_info,
@@ -126,6 +133,7 @@ impl Mint {
             Some(auth_localstore),
             payment_processors,
             keys_metadata,
+            static_token,
         )
         .await
     }
@@ -139,6 +147,7 @@ impl Mint {
         #[cfg(feature = "auth")] auth_localstore: Option<DynMintAuthDatabase>,
         payment_processors: HashMap<PaymentProcessorKey, DynMintPayment>,
         keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
+        #[cfg(feature = "auth")] static_token: Option<String>,
     ) -> Result<Self, Error> {
         let keysets = signatory.keysets().await?;
         if !keysets
@@ -226,6 +235,8 @@ impl Mint {
             keysets: Arc::new(ArcSwap::new(keysets.keysets.into())),
             task_state: Arc::new(Mutex::new(TaskState::default())),
             keys_metadata: Arc::new(keys_metadata),
+            #[cfg(feature = "auth")]
+            static_token: Arc::new(static_token),
         })
     }
 
@@ -454,7 +465,8 @@ impl Mint {
 
             let mut clear_auth_endpoints: Vec<ProtectedEndpoint> = vec![];
             let mut blind_auth_endpoints: Vec<ProtectedEndpoint> = vec![];
-
+            let mut static_auth_endpoints: Vec<ProtectedEndpoint> = vec![];
+            
             for (endpoint, auth) in auth_endpoints {
                 match auth {
                     Some(AuthRequired::Clear) => {
@@ -462,6 +474,9 @@ impl Mint {
                     }
                     Some(AuthRequired::Blind) => {
                         blind_auth_endpoints.push(endpoint);
+                    }
+                    Some(AuthRequired::Static) => {
+                        static_auth_endpoints.push(endpoint);
                     }
                     None => (),
                 }
@@ -476,6 +491,12 @@ impl Mint {
                 a.protected_endpoints = blind_auth_endpoints;
                 a
             });
+
+            mint_info.nuts.nut_xx = mint_info.nuts.nut_xx.map(|mut a| {
+                a.protected_endpoints = static_auth_endpoints;
+                a
+            });
+
             mint_info
         } else {
             mint_info

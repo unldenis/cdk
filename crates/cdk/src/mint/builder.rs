@@ -20,7 +20,6 @@ use super::Nuts;
 use crate::amount::Amount;
 use crate::cdk_database;
 use crate::mint::Mint;
-#[cfg(feature = "auth")]
 use crate::nuts::ProtectedEndpoint;
 use crate::nuts::{
     ContactInfo, CurrencyUnit, MeltMethodSettings, MintInfo, MintMethodSettings, MintVersion,
@@ -38,6 +37,7 @@ pub struct MintBuilder {
     supported_units: HashMap<CurrencyUnit, (u64, u8)>,
     custom_paths: HashMap<CurrencyUnit, DerivationPath>,
     keys_metadata: HashMap<CurrencyUnit, UnitMetadata>,
+    static_token: Option<String>,
 }
 
 impl MintBuilder {
@@ -65,6 +65,7 @@ impl MintBuilder {
             supported_units: HashMap::new(),
             custom_paths: HashMap::new(),
             keys_metadata: HashMap::new(),
+            static_token: None,
         }
     }
 
@@ -83,6 +84,13 @@ impl MintBuilder {
             client_id,
             protected_endpoints,
         ));
+        self
+    }
+
+    /// Set static auth token
+    #[cfg(feature = "auth")]
+    pub fn with_static_token(mut self, static_token: String) -> Self {
+        self.static_token = Some(static_token);
         self
     }
 
@@ -124,6 +132,17 @@ impl MintBuilder {
 
         self.mint_info.nuts = nuts;
 
+        self
+    }
+
+
+    /// Set static token settings
+    pub fn with_static_auth(mut self, protected_endpoints: Vec<ProtectedEndpoint>) -> Self {
+        use cdk_common::nut06::StaticAuthSettings;
+
+        let mut nuts = self.mint_info.nuts;
+        nuts.nut_xx = Some(StaticAuthSettings::new(protected_endpoints));
+        self.mint_info.nuts = nuts;
         self
     }
 
@@ -336,6 +355,7 @@ impl MintBuilder {
                 auth_localstore,
                 self.payment_processors,
                 self.keys_metadata,
+                self.static_token,
             )
             .await;
         }

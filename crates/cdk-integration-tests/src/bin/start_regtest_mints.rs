@@ -298,7 +298,7 @@ fn create_ldk_settings(
         auth_database: None,
         mint_management_rpc: None,
         prometheus: None,
-        auth: None,
+        portal_auth: None,
         portal_wallet: None,
     }
 }

@@ -62,6 +62,9 @@ struct Cli {
     #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
     #[arg(long = "tor", value_enum, default_value_t = TorToggle::On)]
     transport: TorToggle,
+    /// Static auth token
+    #[arg(short, long)]
+    static_token: Option<String>,
     /// Subcommand to run
     #[command(subcommand)]
     command: Commands,
@@ -190,6 +193,10 @@ async fn main() -> Result<()> {
     // Parse currency unit from args
     let currency_unit = CurrencyUnit::from_str(&args.unit)
         .unwrap_or_else(|_| CurrencyUnit::Custom(args.unit.clone()));
+
+
+
+    let static_token = args.static_token.clone();
 
     // Create MultiMintWallet with specified currency unit
     // The constructor will automatically load wallets for this currency unit

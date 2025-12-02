@@ -65,12 +65,18 @@ pub enum Error {
     /// Blind Auth Required
     #[error("Blind Auth Required")]
     BlindAuthRequired,
+    /// Static Auth Required
+    #[error("Static Auth Required")]
+    StaticAuthRequired,
     /// Clear Auth Failed
     #[error("Clear Auth Failed")]
     ClearAuthFailed,
     /// Blind Auth Failed
     #[error("Blind Auth Failed")]
     BlindAuthFailed,
+    /// Static Auth Failed
+    #[error("Static Auth Failed")]
+    StaticAuthFailed,
     /// Auth settings undefined
     #[error("Auth settings undefined")]
     AuthSettingsUndefined,
@@ -551,6 +557,14 @@ impl From<Error> for ErrorResponse {
                 code: ErrorCode::BlindAuthFailed,
                 detail: Error::BlindAuthFailed.to_string(),
             },
+            Error::StaticAuthRequired => ErrorResponse {
+                code: ErrorCode::StaticAuthRequired,
+                detail: Error::StaticAuthRequired.to_string(),
+            },
+            Error::StaticAuthFailed => ErrorResponse {
+                code: ErrorCode::StaticAuthFailed,
+                detail: Error::StaticAuthFailed.to_string(),
+            },
             Error::NUT20(err) => ErrorResponse {
                 code: ErrorCode::WitnessMissingOrInvalid,
                 detail: err.to_string(),
@@ -650,6 +664,8 @@ impl From<ErrorResponse> for Error {
             ErrorCode::UnitMismatch => Self::UnitMismatch,
             ErrorCode::ClearAuthRequired => Self::ClearAuthRequired,
             ErrorCode::BlindAuthRequired => Self::BlindAuthRequired,
+            ErrorCode::StaticAuthRequired => Self::StaticAuthRequired,
+            ErrorCode::StaticAuthFailed => Self::StaticAuthFailed,
             ErrorCode::DuplicateSignature => Self::DuplicateSignatureError,
             _ => Self::UnknownErrorResponse(err.to_string()),
         }
@@ -710,6 +726,10 @@ pub enum ErrorCode {
     BlindAuthRequired,
     /// Blind Auth Failed
     BlindAuthFailed,
+    /// Static Auth Required
+    StaticAuthRequired,
+    /// Static Auth Failed
+    StaticAuthFailed,
     /// Duplicate signature from same pubkey
     DuplicateSignature,
     /// Unknown error code
@@ -746,6 +766,8 @@ impl ErrorCode {
             30002 => Self::ClearAuthFailed,
             31001 => Self::BlindAuthRequired,
             31002 => Self::BlindAuthFailed,
+            32001 => Self::StaticAuthRequired,
+            32002 => Self::StaticAuthFailed,
             _ => Self::Unknown(code),
         }
     }
@@ -779,6 +801,8 @@ impl ErrorCode {
             Self::ClearAuthFailed => 30002,
             Self::BlindAuthRequired => 31001,
             Self::BlindAuthFailed => 31002,
+            Self::StaticAuthRequired => 32001,
+            Self::StaticAuthFailed => 32002,
             Self::Unknown(code) => *code,
         }
     }

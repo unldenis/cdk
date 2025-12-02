@@ -221,7 +221,7 @@ pub fn create_fake_wallet_settings(
         },
         auth_database: None,
         mint_management_rpc: None,
-        auth: None,
+        portal_auth: None,
         prometheus: Some(Default::default()),
         portal_wallet: None,
     }
@@ -272,7 +272,7 @@ pub fn create_cln_settings(
         database: cdk_mintd::config::Database::default(),
         auth_database: None,
         mint_management_rpc: None,
-        auth: None,
+        portal_auth: None,
         prometheus: Some(Default::default()),
         portal_wallet: None,
     }
@@ -321,7 +321,7 @@ pub fn create_lnd_settings(
         database: cdk_mintd::config::Database::default(),
         auth_database: None,
         mint_management_rpc: None,
-        auth: None,
+        portal_auth: None,
         prometheus: Some(Default::default()),
         portal_wallet: None,
     }

@@ -98,6 +98,8 @@ pub struct Wallet {
     metadata_cache_ttl: Arc<RwLock<Option<Duration>>>,
     #[cfg(feature = "auth")]
     auth_wallet: Arc<TokioRwLock<Option<AuthWallet>>>,
+    #[cfg(feature = "auth")]
+    static_token: Option<String>,
     seed: [u8; 64],
     client: Arc<dyn MintConnector + Send + Sync>,
     subscription: SubscriptionManager,
@@ -333,6 +335,7 @@ impl Wallet {
                         self.metadata_cache.clone(),
                         mint_info.protected_endpoints(),
                         oidc_client,
+                        self.static_token.clone(),
                     );
                     *auth_wallet = Some(new_auth_wallet.clone());
 

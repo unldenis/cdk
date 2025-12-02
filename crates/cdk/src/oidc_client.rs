@@ -232,7 +232,7 @@ impl OidcClient {
 
         Ok(())
     }
-
+    
     /// Get new access token using refresh token
     #[cfg(feature = "wallet")]
     pub async fn refresh_access_token(

@@ -24,7 +24,6 @@ use crate::ws::main_websocket;
 use crate::MintState;
 
 use cdk_common::common::UnitMetadata;
-use cdk::nuts::CurrencyUnit;
 use std::str::FromStr;
 
 const PREFER_HEADER_KEY: &str = "Prefer";
@@ -677,10 +676,11 @@ where
         | ErrorCode::MultipleUnits
         | ErrorCode::UnitMismatch
         | ErrorCode::ClearAuthRequired
-        | ErrorCode::BlindAuthRequired => StatusCode::BAD_REQUEST,
+        | ErrorCode::BlindAuthRequired
+        | ErrorCode::StaticAuthRequired => StatusCode::BAD_REQUEST,
 
         // Auth failures (401 Unauthorized)
-        ErrorCode::ClearAuthFailed | ErrorCode::BlindAuthFailed => StatusCode::UNAUTHORIZED,
+        ErrorCode::ClearAuthFailed | ErrorCode::BlindAuthFailed | ErrorCode::StaticAuthFailed => StatusCode::UNAUTHORIZED,
 
         // Lightning/payment errors and unknown errors (500 Internal Server Error)
         ErrorCode::LightningError | ErrorCode::Unknown(_) => StatusCode::INTERNAL_SERVER_ERROR,

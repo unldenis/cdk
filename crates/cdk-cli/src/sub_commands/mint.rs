@@ -47,6 +47,9 @@ pub async fn mint(
 
     let wallet = get_or_create_wallet(multi_mint_wallet, &mint_url).await?;
 
+    // Refresh mint info, if necessary this will set up the auth wallet
+    wallet.fetch_mint_info().await?;
+
     let payment_method = PaymentMethod::from_str(&sub_command_args.method)?;
 
     let quote = match &sub_command_args.quote_id {

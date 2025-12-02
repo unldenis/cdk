@@ -560,6 +560,7 @@ impl TryFrom<Nuts> for cdk::nuts::Nuts {
             },
             nut21: n.nut21.map(|s| s.try_into()).transpose()?,
             nut22: n.nut22.map(|s| s.try_into()).transpose()?,
+            nut_xx: Default::default(),
         })
     }
 }
@@ -730,6 +731,7 @@ mod tests {
                     cdk::nuts::RoutePath::MintBolt11,
                 )],
             }),
+            nut_xx: Default::default(),
         }
     }
 
@@ -869,6 +871,7 @@ mod tests {
             nut20: cdk::nuts::nut06::SupportedSettings { supported: false },
             nut21: None,
             nut22: None,
+            nut_xx: Default::default(),
         };
 
         let ffi_nuts: Nuts = cdk_nuts.into();

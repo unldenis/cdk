@@ -438,6 +438,16 @@ pub struct PortalWallet {
     pub unit_info: HashMap<CurrencyUnit, UnitMetadata>,
 }
 
+#[cfg(feature = "portalwallet")]
+impl Default for PortalWallet {
+    fn default() -> Self {
+        Self {
+            supported_units: Vec::new(),
+            unit_info: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DatabaseEngine {
@@ -512,6 +522,7 @@ impl Default for PostgresConfig {
 pub enum AuthType {
     Clear,
     Blind,
+    Static,
     #[default]
     None,
 }
@@ -523,11 +534,20 @@ impl std::str::FromStr for AuthType {
         match s.to_lowercase().as_str() {
             "clear" => Ok(AuthType::Clear),
             "blind" => Ok(AuthType::Blind),
+            "static" => Ok(AuthType::Static),
             "none" => Ok(AuthType::None),
             _ => Err(format!("Unknown auth type: {s}")),
         }
     }
 }
+
+
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PortalAuth {
+    pub static_token: String,
+}
+
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Auth {
@@ -557,6 +577,7 @@ pub struct Auth {
     /// Enable WebSocket authentication support
     #[serde(default = "default_blind")]
     pub websocket_auth: AuthType,
+    pub static_token: Option<String>,
 }
 
 fn default_blind() -> AuthType {
@@ -585,11 +606,11 @@ pub struct Settings {
     pub auth_database: Option<AuthDatabase>,
     #[cfg(feature = "management-rpc")]
     pub mint_management_rpc: Option<MintManagementRpc>,
-    pub auth: Option<Auth>,
     #[cfg(feature = "prometheus")]
     pub prometheus: Option<Prometheus>,
     #[cfg(feature = "portalwallet")]
     pub portal_wallet: Option<PortalWallet>,
+    pub portal_auth: Option<PortalAuth>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

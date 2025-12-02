@@ -32,6 +32,7 @@ pub struct WalletBuilder {
     metadata_cache_ttl: Option<Duration>,
     metadata_cache: Option<Arc<MintMetadataCache>>,
     metadata_caches: HashMap<MintUrl, Arc<MintMetadataCache>>,
+    static_token: Option<String>,
 }
 
 impl Default for WalletBuilder {
@@ -49,6 +50,7 @@ impl Default for WalletBuilder {
             use_http_subscription: false,
             metadata_cache: None,
             metadata_caches: HashMap::new(),
+            static_token: None,
         }
     }
 }
@@ -175,7 +177,14 @@ impl WalletBuilder {
             metadata_cache,
             HashMap::new(),
             None,
+            self.static_token.clone(),
         ));
+        self
+    }
+
+    /// Set static auth token
+    pub fn set_static_token(mut self, static_token: String) -> Self {
+        self.static_token = Some(static_token);
         self
     }
 
@@ -232,6 +241,8 @@ impl WalletBuilder {
             target_proof_count: self.target_proof_count.unwrap_or(3),
             #[cfg(feature = "auth")]
             auth_wallet: Arc::new(TokioRwLock::new(self.auth_wallet)),
+            #[cfg(feature = "auth")]
+            static_token: self.static_token,
             seed,
             client: client.clone(),
             subscription: SubscriptionManager::new(client, self.use_http_subscription),

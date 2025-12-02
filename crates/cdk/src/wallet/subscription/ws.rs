@@ -64,6 +64,7 @@ pub(crate) async fn stream_client(
             let header_key = match &auth_token {
                 cdk_common::AuthToken::ClearAuth(_) => "Clear-auth",
                 cdk_common::AuthToken::BlindAuth(_) => "Blind-auth",
+                cdk_common::AuthToken::StaticAuth(_) => "Static-auth",
             };
 
             match auth_token.to_string().parse() {

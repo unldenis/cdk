@@ -34,6 +34,8 @@ use std::env;
 use std::str::FromStr;
 
 use crate::config::{DatabaseEngine, LnBackend, Settings};
+#[cfg(feature = "auth")]
+use crate::config::AuthType;
 use anyhow::{anyhow, bail, Result};
 #[cfg(feature = "auth")]
 pub use auth::*;
@@ -97,19 +99,6 @@ impl Settings {
         self.mint_info = self.mint_info.clone().from_env();
         self.ln = self.ln.clone().from_env();
 
-        #[cfg(feature = "auth")]
-        {
-            // Check env vars for auth config even if None
-            let auth = self.auth.clone().unwrap_or_default().from_env();
-
-            // Only set auth if auth_enabled flag is true
-            if auth.auth_enabled {
-                self.auth = Some(auth);
-            } else {
-                self.auth = None;
-            }
-        }
-
         #[cfg(feature = "management-rpc")]
         {
             self.mint_management_rpc = Some(
@@ -156,7 +145,7 @@ impl Settings {
                 self.portal_wallet = Some(
                     self.portal_wallet
                         .clone()
-                        .expect("Portal wallet config must be set")
+                        .unwrap_or_default()
                         .from_env(),
                 );
             }
