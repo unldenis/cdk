@@ -33,6 +33,7 @@ use crate::types::ProofInfo;
 use crate::util::unix_time;
 use crate::wallet::mint_metadata_cache::MintMetadataCache;
 use crate::Amount;
+use cdk_common::common::UnitMetadata;
 #[cfg(feature = "auth")]
 use crate::OidcClient;
 
@@ -723,6 +724,14 @@ impl Wallet {
     /// This controls how many proofs of each denomination the wallet tries to maintain.
     pub fn set_target_proof_count(&mut self, count: usize) {
         self.target_proof_count = count;
+    }
+
+    /// Get unit metadata from the mint
+    ///
+    /// Fetches the unit metadata for this wallet's currency unit from the mint's HTTP endpoint.
+    #[instrument(skip(self))]
+    pub async fn get_unit_metadata(&self) -> Result<UnitMetadata, Error> {
+        self.client.get_unit_metadata(self.unit.clone()).await
     }
 }
 

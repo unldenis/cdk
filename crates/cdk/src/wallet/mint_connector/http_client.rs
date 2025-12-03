@@ -4,6 +4,8 @@ use std::sync::{Arc, RwLock as StdRwLock};
 
 use async_trait::async_trait;
 use cdk_common::{nut19, MeltQuoteBolt12Request, MintQuoteBolt12Request, MintQuoteBolt12Response};
+use cdk_common::common::UnitMetadata;
+use crate::nuts::CurrencyUnit;
 #[cfg(feature = "auth")]
 use cdk_common::{Method, ProtectedEndpoint, RoutePath};
 use serde::de::DeserializeOwned;
@@ -572,6 +574,17 @@ where
             &request,
         )
         .await
+    }
+
+    /// Get Unit Metadata
+    #[instrument(skip(self), fields(mint_url = %self.mint_url))]
+    async fn get_unit_metadata(&self, unit: CurrencyUnit) -> Result<UnitMetadata, Error> {
+        let unit_str = unit.to_string();
+        let url = self
+            .mint_url
+            .join_paths(&["v1", "unit", &unit_str])?;
+        
+        self.transport.http_get(url, None).await
     }
 }
 

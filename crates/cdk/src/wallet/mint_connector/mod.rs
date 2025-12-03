@@ -14,6 +14,8 @@ use crate::nuts::{
     MintQuoteBolt11Response, MintRequest, MintResponse, RestoreRequest, RestoreResponse,
     SwapRequest, SwapResponse,
 };
+use cdk_common::common::UnitMetadata;
+use crate::nuts::CurrencyUnit;
 #[cfg(feature = "auth")]
 use crate::wallet::AuthWallet;
 
@@ -127,4 +129,7 @@ pub trait MintConnector: Debug {
         &self,
         request: MeltRequest<String>,
     ) -> Result<MeltQuoteBolt11Response<String>, Error>;
+
+    /// Get Unit Metadata
+    async fn get_unit_metadata(&self, unit: CurrencyUnit) -> Result<UnitMetadata, Error>;
 }

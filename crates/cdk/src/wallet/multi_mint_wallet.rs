@@ -31,6 +31,7 @@ use crate::types::Melted;
 use crate::wallet::mint_connector::transport::tor_transport::TorAsync;
 use crate::wallet::types::MintQuote;
 use crate::{Amount, Wallet};
+use cdk_common::common::UnitMetadata;
 
 // Transfer timeout constants
 /// Total timeout for waiting for Lightning payment confirmation during transfers
@@ -1918,6 +1919,30 @@ impl MultiMintWallet {
         })?;
 
         wallet.melt_human_readable_quote(address, amount_msat).await
+    }
+
+    /// Get unit metadata for a specific mint
+    ///
+    /// Fetches the unit metadata from the mint's HTTP endpoint for this wallet's currency unit.
+    ///
+    /// # Arguments
+    ///
+    /// * `mint_url` - The mint to fetch unit metadata from
+    ///
+    /// # Returns
+    ///
+    /// The unit metadata for this wallet's currency unit
+    #[instrument(skip(self))]
+    pub async fn get_unit_metadata(
+        &self,
+        mint_url: &MintUrl,
+    ) -> Result<UnitMetadata, Error> {
+        let wallets = self.wallets.read().await;
+        let wallet = wallets.get(mint_url).ok_or(Error::UnknownMint {
+            mint_url: mint_url.to_string(),
+        })?;
+        
+        wallet.get_unit_metadata().await
     }
 }
 
